@@ -3,9 +3,27 @@ chrome.runtime.onInstalled.addListener(() => {
     autoClickMode: 'accept', // 'accept', 'deny', 'off'
     whitelist: [],
     autoAcceptLogin: true,
-    enabled: true
+    enabled: true,
+    acceptedSites: []
   });
 });
+
+function setBadge(tabId) {
+  chrome.tabs.get(tabId, (tab) => {
+    if (tab && tab.url) {
+      const hostname = new URL(tab.url).hostname;
+      chrome.storage.sync.get(['acceptedSites'], (result) => {
+        const accepted = result.acceptedSites || [];
+        if (accepted.includes(hostname)) {
+          chrome.action.setBadgeText({tabId: tabId, text: '✓'});
+          chrome.action.setBadgeBackgroundColor({tabId: tabId, color: '#4CAF50'});
+        } else {
+          chrome.action.setBadgeText({tabId: tabId, text: ''});
+        }
+      });
+    }
+  });
+}
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
@@ -22,7 +40,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         });
       }
     });
+    setBadge(tabId);
   }
+});
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  setBadge(activeInfo.tabId);
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -63,5 +86,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
     }
     return true;
+  }
+
+  if (request.action === 'addAcceptedSite') {
+    const hostname = request.hostname;
+    chrome.storage.sync.get(['acceptedSites'], (result) => {
+      let accepted = result.acceptedSites || [];
+      if (!accepted.includes(hostname)) {
+        accepted.push(hostname);
+        chrome.storage.sync.set({acceptedSites: accepted});
+      }
+    });
   }
 });

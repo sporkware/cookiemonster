@@ -85,6 +85,9 @@
     if (targetButton) {
       targetButton.click();
       console.log(`Cookie Consent Auto-Clicker: Clicked ${mode} button`);
+      if (mode === 'accept') {
+        chrome.runtime.sendMessage({action: 'addAcceptedSite', hostname: window.location.hostname});
+      }
       return true;
     }
     
